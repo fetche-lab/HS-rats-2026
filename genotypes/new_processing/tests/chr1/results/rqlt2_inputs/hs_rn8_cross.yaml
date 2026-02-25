@@ -1,0 +1,20 @@
+# Data from Ratgtex.org site 
+# Includes HS rats genotypes 
+# Genome assembly version GRCr8 
+
+crosstype: hs
+
+geno: hs_genotypes.csv
+founder_geno: hs_founders_genotypes.csv
+gmap: hs_genetic_map.csv
+alleles: 
+- A 
+- B 
+genotypes:
+  AA: 1 
+  AB: 2 
+  BB: 3 
+na.strings: 
+- NA 
+
+
