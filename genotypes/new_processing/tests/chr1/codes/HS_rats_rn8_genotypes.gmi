@@ -1,0 +1,104 @@
+# Processing HS rats genotypes Version rn8 
+In this, we remove unreliable variants and samples, keep high-confidence genotype calls, and document every decision so downstream QTL/GWAS results are defensible. 
+
+## Step 01: General Inspection of the VCFs 
+### Sample vcf file 
+* How many samples:1499 HS rats  
+* How many variants: 7659545 SNPs
+* Variant type: Biallelic SNPs only 
+* Indels: None
+* Multiallelic sites: None 
+* Ts/Tv ratio (transition/transversion): 1.99 
+* Singleton rate: ~0.09%  
+* Sequencing Depth (low-pass?, high coverage?): TBD  
+* Are genotypes hard-called or imputed?: TBD 
+* Reference genome version: GRCr8  
+
+The above inspection indicates biologically consistent SNP data. More details from the vcf stats file => {provide the github link here} 
+
+### Evaluating sample missingness and heterozigosity 
+Plink was used to compute missingness and heterozygosity 
+```sh 
+plink --vcf ratgtex_v4_round11_2.rn8.vcf.gz --missing --het --out plink_stats/ratgtex_v4_qc
+```
+Then generated plots for sample missingness(ratgtex_v4_qc.imiss) and heterozygosity(ratgtex_v4_qc.het) using R 
+```Rscript
+#sample missingness 
+imiss <- read.table("ratgtex_v4_qc.imiss", header=TRUE) 
+hist(imiss$F_MISS, breaks=50) 
+
+#heterozigosity 
+het <- read.table("ratgtex_v4_qc.het", header=TRUE)
+hist(het$F, breaks=50)
+
+```
+* Missingness shows the proportion of missing genotypes per rat, for a given number of rats. 
+* Link to the sample missingness plot => "https://github.com/fetche-lab/HS-rats-2026/blob/main/genotypes/new_processing/plots/hs_snps_missingness.png"  
+* Interpretation: 
+++ <1% missingness for the most samples
+++ very few above 3% 
+++ only isolated samples are near 5-7% 
+* So, now batch failure, no obvious subgroup of poorly genotyped rats, and a few small outliers 
+
+* In heterozygosity, the F co-efficient from ```--het``` represents PLINK inbreeding coefficient. So, the plot shows deviation from expected heterozygosity under the Hardy-Weinberg.
+* Link to the heterozygosity plot => "https://github.com/fetche-lab/HS-rats-2026/blob/main/genotypes/new_processing/plots/hs_snps_heterozygosity.png"   
+* Interpretation: 
+++ F~0; expected heterozygosity 
+++ F>0; inbreeding 
+++ F<0; excess heterozygosity (possible contamination) 
+* The plot is unimodal, roughly bell-shaped (most samples centered near 0), slight right skew (probably founder imbalance, genotyping artifact, slightly higher missingness), left skew (excess heterozygosity, mild contamination, stochastic variation) 
+
+## Step 02: Quality Control Steps 
+
+### Removing Monomorphic and rare variants (MAF>0.05) 
+```sh 
+bcftools view -i 'MAF>0.05' ratgtex_v4_round11_2.rn8.vcf.gz -Oz -o QC_files/ratgtex_v4_round11_2.rn8.MAF-5pct.vcf.gz
+bcftools index QC_files/ratgtex_v4_round11_2.rn8.MAF-5pct.vcf.gz  
+```
+### Remove High-Missing sites 
+Exclude variants with F_MISSING > 0.05 
+```sh 
+ bcftools +fill-tags QC_files/ratgtex_v4_round11_2.rn8.MAF-5pct.vcf.gz -Oz -o QC_files/ratgtex_v4_round11_2.rn8.MAF-5pct.Ftagged.vcf.gz -- -t F_MISSING
+bcftools view -e "F_MISSING>0.05" QC_files/ratgtex_v4_round11_2.rn8.MAF-5pct.Ftagged.vcf.gz -Oz -o QC_files/ratgtex_v4_round11_2.rn8.MAF-5pct.Ftagged_clean.vcf.gz 
+bcftools index QC_files/ratgtex_v4_round11_2.rn8.MAF-5pct.Ftagged_clean.vcf.gz 
+```
+Re-evaluate sample missingness and heterozygosity, compare between raw and QC'd vcfs. 
+
+Results for the QC'd sample missingness and heterozygosity plots; 
+=> "https://github.com/fetche-lab/HS-rats-2026/blob/main/genotypes/new_processing/plots/hs_snps_missingness_clean.png" sample missingness after QC 
+=> "https://github.com/fetche-lab/HS-rats-2026/blob/main/genotypes/new_processing/plots/hs_snps_heterozygosity_clean.png" heterozygosity after QC 
+
+## Step 03: Infer founders and generate smoothed and dense genotype files 
+
+### Intersect HS and founde vcfs 
+* The aim is to generate identical markers 
+
+```sh
+bcftools isec \
+  -p intersect_output \
+  -n=2 \
+  hs_qc.vcf.gz founder_qc.vcf.gz
+```
+* Output `0000.vcf` and/or `0001.vcf` for hs and founder respectively. both contain same markers 
+* zip the 2 vcfs, and index them for the next step 
+
+```sh 
+mv 0000.vcf hs_qc_common.vcf; mv 0001.vcf founder_common.vcf.gz 
+bcftools index hs_qc_common.vcf; bcftools index founder_common.vcf.gz
+```
+### Convert VCFs to csvs
+* This generates csvs needed for rqtl2 analysis 
+* Link to the script => "https://github.com/fetche-lab/HS-rats-2026/blob/main/genotypes/new_processing/tests/chr1/codes/vcf_to_rqlt2_inputs.R"
+
+### Multiparent mapping (Hs + 8 Founders)
+
+#### Running Hidden Markov Model (HMM) with rqlt2 
+
+* The `calc_genoprob()` function is used 
+++ * Essentially, for every indvidual at every marker, it calculates the probability that the genotype came from each founder haplotype
+
+* Link to the script => "https://github.com/fetche-lab/HS-rats-2026/blob/main/genotypes/new_processing/tests/chr1/codes/qlt2_hmm_pipeline.R"  
+
+  
+
+ 
