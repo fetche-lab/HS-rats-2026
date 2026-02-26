@@ -58,9 +58,9 @@ bcftools index QC_files/ratgtex_v4_round11_2.rn8.MAF-5pct.vcf.gz
 ### Remove High-Missing sites 
 Exclude variants with F_MISSING > 0.05 
 ```sh 
- bcftools +fill-tags QC_files/ratgtex_v4_round11_2.rn8.MAF-5pct.vcf.gz -Oz -o QC_files/ratgtex_v4_round11_2.rn8.MAF-5pct.Ftagged.vcf.gz -- -t F_MISSING
+bcftools +fill-tags QC_files/ratgtex_v4_round11_2.rn8.MAF-5pct.vcf.gz -Oz -o QC_files/ratgtex_v4_round11_2.rn8.MAF-5pct.Ftagged.vcf.gz -- -t F_MISSING
 bcftools view -e "F_MISSING>0.05" QC_files/ratgtex_v4_round11_2.rn8.MAF-5pct.Ftagged.vcf.gz -Oz -o QC_files/ratgtex_v4_round11_2.rn8.MAF-5pct.Ftagged_clean.vcf.gz 
-bcftools index QC_files/ratgtex_v4_round11_2.rn8.MAF-5pct.Ftagged_clean.vcf.gz 
+bcftools index QC_files/ratgtex_v4_round11_2.rn8.MAF-5pct.Ftagged_clean.vcf.gz ## this fits to be the dense marker genotype file, to be used for qtl mapping snp saturation in reverse genotyping step 
 ```
 Re-evaluate sample missingness and heterozygosity, compare between raw and QC'd vcfs. 
 
@@ -97,7 +97,8 @@ bcftools index hs_qc_common.vcf; bcftools index founder_common.vcf.gz
 * The `calc_genoprob()` function is used 
 ++ * Essentially, for every indvidual at every marker, it calculates the probability that the genotype came from each founder haplotype
 
-* Link to the script => "https://github.com/fetche-lab/HS-rats-2026/blob/main/genotypes/new_processing/tests/chr1/codes/qlt2_hmm_pipeline.R"  
+* Link to the script => "https://github.com/fetche-lab/HS-rats-2026/blob/main/genotypes/new_processing/tests/chr1/codes/qlt2_hmm_pipeline.R"  (Still needs improvements; file processing having issues)  
+* Next: Generating founder aware haplotype blocks, pick proximal/distal markers, generate low density snp genotype file. 
 
   
 
